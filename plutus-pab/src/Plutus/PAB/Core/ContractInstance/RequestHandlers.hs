@@ -51,6 +51,7 @@ import qualified Plutus.PAB.Events.Contract                    as Events.Contrac
 import           Plutus.PAB.Types                              (Source (NodeEventSource, WalletEventSource))
 import           Wallet.Effects                                (ChainIndexEffect, ContractRuntimeEffect, WalletEffect)
 import           Wallet.Emulator.LogMessages                   (TxBalanceMsg)
+import           Wallet.Types                                  (NotificationError)
 
 processOwnPubkeyRequests ::
     forall effs.
@@ -189,6 +190,7 @@ data ContractInstanceMsg t =
     | HandlingRequests ContractInstanceId [Request ContractPABRequest]
     | BalancingTx TxBalanceMsg
     | MaxIterationsExceeded ContractInstanceId MaxIterations
+    | NotificationFailed NotificationError
     deriving stock (Eq, Show, Generic)
     deriving anyclass (ToJSON, FromJSON)
 
@@ -259,6 +261,8 @@ instance ToJSON v => ToObject (ContractInstanceMsg v) where
         MaxIterationsExceeded instanceID maxIts ->
             mkObjectStr "exceeded maximum number of iterations"
                 (instanceID, Tagged @"max_iterations" maxIts)
+        NotificationFailed _ ->
+            mkObjectStr "notification failed" ()
 
 instance Pretty t => Pretty (ContractInstanceMsg t) where
     pretty = \case
@@ -287,3 +291,4 @@ instance Pretty t => Pretty (ContractInstanceMsg t) where
         HandlingRequests i rqs -> "Handling" <+> pretty (length rqs) <+> "requests for" <+> pretty i
         BalancingTx msg -> pretty msg
         MaxIterationsExceeded i (MaxIterations is) -> "Max iterations" <+> parens (pretty is) <+> "exceeded for" <+> pretty i
+        NotificationFailed e -> "Notification failed:" <+> pretty e
