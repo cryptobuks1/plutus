@@ -678,6 +678,7 @@ handleGistAction PublishGist = do
 
     -- playground is a meta-data file that we currently just use as a tag to check if a gist is a marlowe playground gist
     playground = "{}"
+  metadata <- Just <$> encodeJSON <$> use _contractMetadata
   workflow <- use _workflow
   files <- case workflow of
     Just Marlowe -> do
@@ -697,7 +698,7 @@ handleGistAction PublishGist = do
       pure $ mempty { actus }
     Nothing -> mempty
   let
-    newGist = mkNewGist description files
+    newGist = mkNewGist description $ files { metadata }
   void
     $ runMaybeT do
         mGist <- use _gistId
@@ -770,6 +771,7 @@ loadGist gist = do
     , haskell
     , javascript
     , actus
+    , metadata: mMetadataJSON
     } = playgroundFiles gist
 
     description = view gistDescription gist
@@ -780,6 +782,8 @@ loadGist gist = do
   toJavascriptEditor $ JavascriptEditor.handleAction $ JS.InitJavascriptProject $ fromMaybe mempty javascript
   toMarloweEditor $ MarloweEditor.handleAction $ ME.InitMarloweProject $ fromMaybe mempty marlowe
   toBlocklyEditor $ BlocklyEditor.handleAction $ BE.InitBlocklyProject $ fromMaybe mempty blockly
+  for_ mMetadataJSON \metadataJSON ->
+    assign _contractMetadata $ either mempty identity $ runExcept (decodeJSON metadataJSON)
   -- Actus doesn't have a SetCode to reset for the moment, so we only set if present.
   -- TODO add SetCode to Actus
   for_ actus \xml -> query _actusBlocklySlot unit (ActusBlockly.LoadWorkspace xml unit)
