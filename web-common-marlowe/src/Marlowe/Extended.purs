@@ -38,6 +38,30 @@ type MetaData
     , choiceDescriptions :: Map String String
     }
 
+type MetadataHintInfo
+  = { roles :: Set S.TokenName
+    , slotParameters :: Set String
+    , valueParameters :: Set String
+    , choiceNames :: Set String
+    }
+
+getMetadataHintInfo :: Contract -> MetadataHintInfo
+getMetadataHintInfo contract =
+  let
+    Placeholders placeholders = getPlaceholderIds contract
+  in
+    { roles:
+        Set.mapMaybe
+          ( case _ of
+              S.Role name -> Just name
+              _ -> Nothing
+          )
+          $ getParties contract
+    , slotParameters: placeholders.slotPlaceholderIds
+    , valueParameters: placeholders.valuePlaceholderIds
+    , choiceNames: getChoiceNames contract
+    }
+
 class ToCore a b where
   toCore :: a -> Maybe b
 
@@ -109,11 +133,20 @@ class Fillable a b where
 class HasParties a where
   getParties :: a -> Set S.Party
 
+class HasChoices a where
+  getChoiceNames :: a -> Set String
+
+instance arrayHasChoices :: HasChoices a => HasChoices (Array a) where
+  getChoiceNames = foldMap getChoiceNames
+
 instance arrayHasParties :: HasParties a => HasParties (Array a) where
   getParties = foldMap getParties
 
 instance sPartyHasParties :: HasParties S.Party where
   getParties party = Set.singleton party
+
+instance sChoiceIdHasChoices :: HasChoices S.ChoiceId where
+  getChoiceNames (S.ChoiceId choiceName _) = Set.singleton choiceName
 
 instance sChoiceIdHasParties :: HasParties S.ChoiceId where
   getParties (S.ChoiceId _ party) = getParties party
@@ -336,6 +369,21 @@ instance fillableValue :: Fillable Value TemplateContent where
     go :: forall a. (Fillable a TemplateContent) => a -> a
     go = fillTemplate placeholders
 
+instance valueHasChoices :: HasChoices Value where
+  getChoiceNames (AvailableMoney accId _) = Set.empty
+  getChoiceNames (Constant _) = Set.empty
+  getChoiceNames (ConstantParam _) = Set.empty
+  getChoiceNames (NegValue val) = getChoiceNames val
+  getChoiceNames (AddValue lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames (SubValue lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames (MulValue lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames (Scale _ val) = getChoiceNames val
+  getChoiceNames (ChoiceValue choId) = getChoiceNames choId
+  getChoiceNames SlotIntervalStart = Set.empty
+  getChoiceNames SlotIntervalEnd = Set.empty
+  getChoiceNames (UseValue _) = Set.empty
+  getChoiceNames (Cond obs lhs rhs) = getChoiceNames obs <> getChoiceNames lhs <> getChoiceNames rhs
+
 instance valueHasParties :: HasParties Value where
   getParties (AvailableMoney accId _) = getParties accId
   getParties (Constant _) = Set.empty
@@ -504,6 +552,19 @@ instance fillableObservation :: Fillable Observation TemplateContent where
     go :: forall a. (Fillable a TemplateContent) => a -> a
     go = fillTemplate placeholders
 
+instance observationHasChoices :: HasChoices Observation where
+  getChoiceNames (AndObs lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames (OrObs lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames (NotObs v) = getChoiceNames v
+  getChoiceNames (ChoseSomething a) = getChoiceNames a
+  getChoiceNames (ValueGE lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames (ValueGT lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames (ValueLT lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames (ValueLE lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames (ValueEQ lhs rhs) = getChoiceNames lhs <> getChoiceNames rhs
+  getChoiceNames TrueObs = Set.empty
+  getChoiceNames FalseObs = Set.empty
+
 instance observationHasParties :: HasParties Observation where
   getParties (AndObs lhs rhs) = getParties lhs <> getParties rhs
   getParties (OrObs lhs rhs) = getParties lhs <> getParties rhs
@@ -587,6 +648,11 @@ instance fillableAction :: Fillable Action TemplateContent where
     where
     go :: forall a. (Fillable a TemplateContent) => a -> a
     go = fillTemplate placeholders
+
+instance actionHasChoices :: HasChoices Action where
+  getChoiceNames (Deposit _ _ _ value) = getChoiceNames value
+  getChoiceNames (Notify obs) = getChoiceNames obs
+  getChoiceNames _ = Set.empty
 
 instance actionHasParties :: HasParties Action where
   getParties (Deposit accId party _ value) = getParties accId <> getParties party <> getParties value
@@ -673,6 +739,9 @@ instance fillableCase :: Fillable Case TemplateContent where
     where
     go :: forall a. (Fillable a TemplateContent) => a -> a
     go = fillTemplate placeholders
+
+instance caseHasChoices :: HasChoices Case where
+  getChoiceNames (Case action contract) = getChoiceNames action <> getChoiceNames contract
 
 instance caseHasParties :: HasParties Case where
   getParties (Case action contract) = getParties action <> getParties contract
@@ -791,7 +860,15 @@ instance fillableContract :: Fillable Contract TemplateContent where
     go :: forall a. (Fillable a TemplateContent) => a -> a
     go = fillTemplate placeholders
 
-instance contractHasParries :: HasParties Contract where
+instance contractHasChoices :: HasChoices Contract where
+  getChoiceNames Close = Set.empty
+  getChoiceNames (Pay accId payee _ val cont) = getChoiceNames val <> getChoiceNames cont
+  getChoiceNames (If obs cont1 cont2) = getChoiceNames obs <> getChoiceNames cont1 <> getChoiceNames cont2
+  getChoiceNames (When cases _ cont) = getChoiceNames cases <> getChoiceNames cont
+  getChoiceNames (Let _ val cont) = getChoiceNames val <> getChoiceNames cont
+  getChoiceNames (Assert obs cont) = getChoiceNames obs <> getChoiceNames cont
+
+instance contractHasParties :: HasParties Contract where
   getParties Close = Set.empty
   getParties (Pay accId payee _ val cont) = getParties accId <> getParties payee <> getParties val <> getParties cont
   getParties (If obs cont1 cont2) = getParties obs <> getParties cont1 <> getParties cont2

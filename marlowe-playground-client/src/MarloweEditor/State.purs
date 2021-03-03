@@ -16,7 +16,7 @@ import Control.Monad.Reader (class MonadAsk)
 import Data.Array (filter)
 import Data.Either (Either(..), hush)
 import Data.Foldable (for_, traverse_)
-import Data.Lens (assign, modifying, preview, set, use)
+import Data.Lens (assign, modifying, over, preview, set, use)
 import Data.Lens.Index (ix)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -30,18 +30,18 @@ import Examples.Marlowe.Contracts (example) as ME
 import Halogen (HalogenM, liftEffect, modify_, query)
 import Halogen.Extra (mapSubmodule)
 import Halogen.Monaco (Message(..), Query(..)) as Monaco
-import SessionStorage as SessionStorage
 import MainFrame.Types (ChildSlots, _marloweEditorPageSlot)
-import Marlowe.Extended (Contract, getPlaceholderIds, typeToLens, updateTemplateContent)
+import Marlowe.Extended (Contract, getMetadataHintInfo, getPlaceholderIds, typeToLens, updateTemplateContent)
 import Marlowe.Holes (fromTerm)
 import Marlowe.LinterText as Linter
 import Marlowe.Monaco (updateAdditionalContext)
 import Marlowe.Monaco as MM
 import Marlowe.Parser (parseContract)
-import MarloweEditor.Types (Action(..), BottomPanelView, State, _bottomPanelState, _editorErrors, _editorWarnings, _keybindings, _selectedHole, _showErrorDetail)
+import MarloweEditor.Types (Action(..), BottomPanelView, State, _bottomPanelState, _editorErrors, _editorWarnings, _keybindings, _metadataHintInfo, _selectedHole, _showErrorDetail)
 import Monaco (IMarker, isError, isWarning)
 import Network.RemoteData as RemoteData
 import Servant.PureScript.Ajax (AjaxError)
+import SessionStorage as SessionStorage
 import StaticAnalysis.Reachability (analyseReachability, getUnreachableContracts)
 import StaticAnalysis.StaticTools (analyseContract)
 import StaticAnalysis.Types (AnalysisExecutionState(..), _analysisExecutionState, _analysisState, _templateContent)
@@ -168,7 +168,9 @@ lintText text = do
   -- We set the templates here so that we don't have to parse twice
   for_ parsedContract \contractHoles ->
     for_ ((fromTerm contractHoles) :: Maybe Contract) \contract ->
-      modifying (_analysisState <<< _templateContent) $ updateTemplateContent $ getPlaceholderIds contract
+      modifying identity
+        $ over (_analysisState <<< _templateContent) (updateTemplateContent $ getPlaceholderIds contract)
+        <<< set _metadataHintInfo (getMetadataHintInfo contract)
   {-
     There are three different Monaco objects that require the linting information:
       * Markers
