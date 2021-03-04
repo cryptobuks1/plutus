@@ -4,7 +4,8 @@ module Template.Library
   ) where
 
 import Prelude
-import Data.Map (empty, insert, singleton)
+import Data.Map (empty, fromFoldable, insert, singleton)
+import Data.Tuple.Nested ((/\))
 import Marlowe.Extended (Action(..), Case(..), Contract(..), Observation(..), Payee(..), Timeout(..), Value(..))
 import Marlowe.Semantics (Bound(..), ChoiceId(..), Party(..), Token(..))
 import Template.Types (Template)
@@ -20,10 +21,12 @@ defaultTemplate =
       , contractDescription: "Escrow is a financial arrangement where a third party holds and regulates payment of the funds required for two parties involved in a given transaction."
       , roleDescriptions: insert "alice" "about the alice role" $ singleton "bob" "about the bob role"
       , slotParameterDescriptions:
-          insert "aliceTimeout" "about the aliceTimeout"
-            $ insert "arbitrageTimeout" "about the arbitrageTimeout"
-            $ insert "bobTimeout" "about the bobTimeout"
-            $ singleton "depositSlot" "about the depositSlot"
+          fromFoldable 
+            [ "aliceTimeout" /\ "about the aliceTimeout"
+            , "arbitrageTimeout" /\ "about the arbitrageTimeout"
+            , "bobTimeout" /\ "about the bobTimeout"
+            , "depositSlot" /\ "about the depositSlot"
+            ]
       , valueParameterDescriptions: singleton "amount" "about the amount"
       , choiceDescriptions: singleton "choice" "about the choice"
       }
