@@ -17,10 +17,40 @@ import Data.Symbol (SProxy(..))
 import Halogen.Monaco (KeyBindings(..))
 import Halogen.Monaco as Monaco
 import Marlowe.Extended (IntegerTemplateType, MetadataHintInfo)
+import Marlowe.Semantics as S
 import Monaco (IMarker)
 import StaticAnalysis.Types (AnalysisState, initAnalysisState)
 import Text.Parsing.StringParser (Pos)
 import Web.HTML.Event.DragEvent (DragEvent)
+
+class ShowConstructor a where
+  showConstructor :: a -> String
+
+data MetadataAction
+  = SetContractName String
+  | SetContractType String
+  | SetContractDescription String
+  | SetRoleDescription S.TokenName String
+  | DeleteRoleDescription S.TokenName
+  | SetSlotParameterDescription String String
+  | DeleteSlotParameterDescription String
+  | SetValueParameterDescription String String
+  | DeleteValueParameterDescription String
+  | SetChoiceDescription String String
+  | DeleteChoiceDescription String
+
+instance metadataActionShowConstructor :: ShowConstructor MetadataAction where
+  showConstructor (SetContractName _) = "SetContractName"
+  showConstructor (SetContractType _) = "SetContractType"
+  showConstructor (SetContractDescription _) = "SetContractDescription"
+  showConstructor (SetRoleDescription _ _) = "SetRoleDescription"
+  showConstructor (DeleteRoleDescription _) = "DeleteRoleDescription"
+  showConstructor (SetSlotParameterDescription _ _) = "SetSlotParameterDescription"
+  showConstructor (DeleteSlotParameterDescription _) = "DeleteSlotParameterDescription"
+  showConstructor (SetValueParameterDescription _ _) = "SetValueParameterDescription"
+  showConstructor (DeleteValueParameterDescription _) = "DeleteValueParameterDescription"
+  showConstructor (SetChoiceDescription _ _) = "SetChoiceDescription"
+  showConstructor (DeleteChoiceDescription _) = "DeleteChoiceDescription"
 
 data Action
   = Init
@@ -37,6 +67,7 @@ data Action
   | ViewAsBlockly
   | InitMarloweProject String
   | SelectHole (Maybe String)
+  | MetadataAction MetadataAction
   | SetIntegerTemplateParam IntegerTemplateType String BigInteger
   | AnalyseContract
   | AnalyseReachabilityContract
@@ -62,6 +93,7 @@ instance actionIsEvent :: IsEvent Action where
   toEvent ViewAsBlockly = Just $ defaultEvent "ViewAsBlockly"
   toEvent (InitMarloweProject _) = Just $ defaultEvent "InitMarloweProject"
   toEvent (SelectHole _) = Just $ defaultEvent "SelectHole"
+  toEvent (MetadataAction action) = Just $ (defaultEvent "MetadataAction") { label = Just $ showConstructor action }
   toEvent (SetIntegerTemplateParam _ _ _) = Just $ defaultEvent "SetIntegerTemplateParam"
   toEvent AnalyseContract = Just $ defaultEvent "AnalyseContract"
   toEvent AnalyseReachabilityContract = Just $ defaultEvent "AnalyseReachabilityContract"

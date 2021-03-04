@@ -117,6 +117,8 @@ handleAction (InitMarloweProject contents) = do
 
 handleAction (SelectHole hole) = assign _selectedHole hole
 
+handleAction (MetadataAction _) = pure unit
+
 handleAction (SetIntegerTemplateParam templateType key value) = modifying (_analysisState <<< _templateContent <<< typeToLens templateType) (Map.insert key value)
 
 handleAction AnalyseContract = runAnalysis $ analyseContract
