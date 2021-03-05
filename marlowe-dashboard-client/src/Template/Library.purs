@@ -21,7 +21,7 @@ defaultTemplate =
       , contractDescription: "Escrow is a financial arrangement where a third party holds and regulates payment of the funds required for two parties involved in a given transaction."
       , roleDescriptions: insert "alice" "about the alice role" $ singleton "bob" "about the bob role"
       , slotParameterDescriptions:
-          fromFoldable 
+          fromFoldable
             [ "aliceTimeout" /\ "about the aliceTimeout"
             , "arbitrageTimeout" /\ "about the arbitrageTimeout"
             , "bobTimeout" /\ "about the bobTimeout"

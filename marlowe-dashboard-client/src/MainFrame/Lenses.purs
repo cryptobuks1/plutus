@@ -1,7 +1,8 @@
 module MainFrame.Lenses
   ( _wallets
-  , _newWalletDetails
-  , _newWalletPubKey
+  , _newWalletNickname
+  , _newWalletContractId
+  , _remoteDataPubKey
   , _templates
   , _subState
   , _webSocketStatus
@@ -24,16 +25,19 @@ import Play.Types (State) as Play
 import Pickup.Types (State) as Pickup
 import Servant.PureScript.Ajax (AjaxError)
 import Template.Types (Template) as Template
-import WalletData.Types (WalletDetails, WalletLibrary)
+import WalletData.Types (Nickname, WalletLibrary)
 
 _wallets :: Lens' State WalletLibrary
 _wallets = prop (SProxy :: SProxy "wallets")
 
-_newWalletDetails :: Lens' State WalletDetails
-_newWalletDetails = prop (SProxy :: SProxy "newWalletDetails")
+_newWalletNickname :: Lens' State Nickname
+_newWalletNickname = prop (SProxy :: SProxy "newWalletNickname")
 
-_newWalletPubKey :: Lens' State (RemoteData AjaxError PubKey)
-_newWalletPubKey = prop (SProxy :: SProxy "newWalletPubKey")
+_newWalletContractId :: Lens' State String
+_newWalletContractId = prop (SProxy :: SProxy "newWalletContractId")
+
+_remoteDataPubKey :: Lens' State (RemoteData AjaxError PubKey)
+_remoteDataPubKey = prop (SProxy :: SProxy "remoteDataPubKey")
 
 _templates :: Lens' State (Array Template.Template)
 _templates = prop (SProxy :: SProxy "templates")
